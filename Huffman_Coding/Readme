@@ -1,0 +1,66 @@
+FNU Anupriya anupriya@umail.ucsb.edu
+
+INCLUDED FILES:
+
+All source files (Frequencies.cpp, Huffman.cpp, Encode.cpp, Decode.cpp)
+Makefile
+this Readme
+
+PROGRAM#1: COMMAND LINES
+
+This assignment contains four programs. Makefile can be run using make command on Unix command line terminal to compile these four programs to produce four executable files: frequencies, huffman, decode, encode. 
+$ make
+
+frequencies (executable) program then takes a file (e.g. pdf, .txt etc) as an input and outputs a frequency table.
+$ cat input | ./frequencies
+
+Output of frequencies program is the input for huffman program which in turn outputs an optimal huffman code. 
+$ cat input | ./frequencies | ./huffman > code
+
+The huffman code is then used to encode the input file (to compress the size of the file).  So, frequencies program take code as its command line argument and takes text file as input from stdin and outputs the encoded file (packed binary).
+$ cat input | ./encode code > encoded
+
+This encoded file can then be decoded using the huffman code. 
+$ cat encoded | ./decode code > decoded
+
+FREQUENCIES.CPP:
+
+Testing sample input files (test1.in, test2.in, test3.in, test4.in) on Frequencies.cpp produced frequency tables which matched exactly with sample output files(test1freq.out, test2freq.out, test3freq.out, test4freq.out). 
+
+Outputs of Frequencies.cpp also match with the output of perl script (frequencies.pl) for various inputs. I ran the following command to run the perl script:
+$ perl frequencies.pl input
+
+
+HUFFMAN.CPP:
+
+I implemented the huffman tree using priority queue data structure visualized as Min Heap. Priority queue is array of pointers to a huffman subtree (huffman subtree nodes are defined by four elements: character, frequency, left pointer and right pointer). Instead of importing priority queue STL, I implemented the data structure myself. Priority data structure supports following operations:
+top(): returns a pointer to a huffman subtree.
+push(HuffmanTreeNode * node): pushes a pointer to a huffman subtree into the queue.
+pop(): pops a pointer to a huffman subtree into the queue.
+size(): returns the size of the queue.
+
+To implement the Huffman tree I implemented the huffman tree algorithm as covered in class. To print the huffman tree I recursively called the left and right subtrees. I also included the edge case, where there is only one input (i.e. input file contains only one character). In this edge case, print function will not recursively call itself and only print a character 0.
+
+Output code from the Huffman.cpp program adhere to the condition that no codeword is a prefix of another codeword. Output code of Huffman.cpp does not match exactly with the output of perl script (huffman.pl) for various test cases. But the huffman code length of various characters remain the same for the both outputs which is what is required. I ran the following command to run the perl script:
+$ perl frequencies.pl input | perl huffman.pl
+
+ENCODE.CPP:
+
+To implement encode program, I used a string variable as buffer. I read the input one character at a time and concatenated the corresponding huffman code (belonging to the character) to buffer. As soon as the buffer size becomes more than or equals to eight bytes, I extracted chunks of 8 characters (eg. 10101011) and then parsed this chunk to interpret it as a binary value (of 1 byte (unsigned char)) and pushed it into the binary file. I repeated this process till we have less than 8 characters left in the buffer.
+
+If S , D , N and A are encoded as 11000, 11001, 1101 and 1110 respectively, then sequence of bits for SAD will look like this:
+	1100 0111 0110 01
+Since this bit sequence is not multiple of 8, a padding for the last 1 byte is required. To resolve this, we can write the last byte with 6 valid bits (for the example above) and add one more byte containing number of bits to be read from the previous byte. So when we decode the file and EOF is encountered, the last byte tells us the number of valid bits in the second last byte. (I also included the edge case where buffer size is zero when EOF is encountered including when EOF is encountered on the first read operation). The sequence of bits for SAD after padding will look like this:
+	1100 0111 0110 0100 0000 0110
+
+DECODE.CPP:
+
+For the decode program, I reconstructed the huffman tree from the huffman code file. To decode a byte stream, we go down the huffman tree depending on the bit read (left for 0 and right for 1) till a leaf is encountered, at which point we output the decoded character. We also keep track of the position of last decoded bit in first byte with a partiallyDecodeNode pointer and thus remaining uncoded bits will carry over to decoding of next byte.
+
+When we are decoding a byte extracted from the input file, we have to keep track of the fact that the byte next to its next byte is EOF or not. So, let us assume byte extracted from the file is b1 and the byte next to b1 is b2 and the byte next to b2 is b3. If b3 is EOF then b2 contains information about the number of bits to be extracted from b1. So we extract the number of valid bits from b1 and terminate the decoding process. So we have to analyze three successively extracted bytes and then decode the first byte accordingly.
+
+The decode program works as the exact inverse of the encode program for any given input and its huffman code. To check it I ran the following command:
+$ cat input | ./encode code | ./decode code > output
+$ cmp input output
+
+So, all the checks on my program seems to be working well.
